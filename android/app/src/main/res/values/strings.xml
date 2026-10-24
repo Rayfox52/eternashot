@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EternaShot</string>
+    <string name="title_activity_main">EternaShot</string>
+    <string name="package_name">com.eternashot.app</string>
+    <string name="custom_url_scheme">com.eternashot.app</string>
+</resources>

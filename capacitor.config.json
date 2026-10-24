@@ -1,0 +1,8 @@
+{
+  "appId": "com.eternashot.app",
+  "appName": "EternaShot",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
