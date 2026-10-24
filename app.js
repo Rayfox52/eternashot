@@ -634,7 +634,18 @@ document.addEventListener('DOMContentLoaded', () => {
       currentLayout = layout;
       activeLayoutLabel.textContent = LAYOUT_NAMES[layout] || layout;
 
+      // Auto sync 35mm film frame template
+      if (layout === 'film35') {
+        currentFrameTemplate = 'film_analog';
+        activeFrameLabel.textContent = FRAME_NAMES['film_analog'] || 'Analog Film 35mm';
+        document.querySelectorAll('.frame-swatch-item').forEach(b => {
+          b.classList.toggle('active', b.dataset.frame === 'film_analog');
+        });
+      }
+
       stripWrapper.className = `strip-wrapper layout-${layout} frame-${currentFrameTemplate}`;
+      stripWrapper.style.backgroundColor = '';
+      stripWrapper.style.color = '';
       rebuildSlotsForLayout();
     });
   });
@@ -648,6 +659,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const frame = btn.dataset.frame;
       currentFrameTemplate = frame;
       activeFrameLabel.textContent = FRAME_NAMES[frame] || frame;
+
+      // Auto sync 35mm film layout
+      if (frame === 'film_analog') {
+        currentLayout = 'film35';
+        activeLayoutLabel.textContent = LAYOUT_NAMES['film35'] || 'Analog 35mm Film Roll';
+        document.querySelectorAll('.layout-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.layout === 'film35');
+        });
+        rebuildSlotsForLayout();
+      }
 
       stripWrapper.className = `strip-wrapper layout-${currentLayout} frame-${frame}`;
       stripWrapper.style.backgroundColor = '';
@@ -947,7 +968,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (img) {
         exportCtx.save();
         exportCtx.beginPath();
-        exportCtx.roundRect(relX, relY, relW, relH, 4 * scale);
+        if (typeof exportCtx.roundRect === 'function') {
+          exportCtx.roundRect(relX, relY, relW, relH, 4 * scale);
+        } else {
+          const r = 4 * scale;
+          exportCtx.moveTo(relX + r, relY);
+          exportCtx.arcTo(relX + relW, relY, relX + relW, relY + relH, r);
+          exportCtx.arcTo(relX + relW, relY + relH, relX, relY + relH, r);
+          exportCtx.arcTo(relX, relY + relH, relX, relY, r);
+          exportCtx.arcTo(relX, relY, relX + relW, relY, r);
+          exportCtx.closePath();
+        }
         exportCtx.clip();
 
         drawImageCover(exportCtx, img, relX, relY, relW, relH);
@@ -955,7 +986,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Crisp border stroke matching preview
         exportCtx.save();
-        exportCtx.strokeStyle = currentLayout === 'film35' ? 'rgba(255, 255, 255, 0.25)' : '#000000';
+        const isFilmBorder = currentLayout === 'film35' || currentFrameTemplate === 'film_analog';
+        exportCtx.strokeStyle = isFilmBorder ? 'rgba(255, 255, 255, 0.25)' : '#000000';
         exportCtx.lineWidth = 1.5 * scale;
         exportCtx.strokeRect(relX, relY, relW, relH);
         exportCtx.restore();
