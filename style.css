@@ -1152,23 +1152,27 @@ button {
 }
 
 /* 5. LAYOUT: FILM 35mm SPROCKET ROLL */
-.strip-wrapper.layout-film35 {
-  width: 230px;
-  padding: 14px 34px 18px 34px;
-  background: #000000;
-  color: #f59e0b;
+.strip-wrapper.layout-film35,
+.strip-wrapper.frame-film_analog {
+  width: 230px !important;
+  padding: 14px 34px 18px 34px !important;
+  background: #0a0a0c !important;
+  color: #f59e0b !important;
 }
-.strip-wrapper.layout-film35 .strip-photos-grid {
+.strip-wrapper.layout-film35 .strip-photos-grid,
+.strip-wrapper.frame-film_analog .strip-photos-grid {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.strip-wrapper.layout-film35 .photo-slot {
+.strip-wrapper.layout-film35 .photo-slot,
+.strip-wrapper.frame-film_analog .photo-slot {
   width: 100%;
   aspect-ratio: 4 / 3;
 }
-.strip-wrapper.layout-film35 .sprocket-track {
-  display: block;
+.strip-wrapper.layout-film35 .sprocket-track,
+.strip-wrapper.frame-film_analog .sprocket-track {
+  display: block !important;
   position: absolute;
   top: 8px;
   bottom: 8px;
@@ -1182,14 +1186,19 @@ button {
     transparent 18px,
     transparent 24px
   );
-  opacity: 0.85;
+  opacity: 0.9;
+  z-index: 4;
 }
-.strip-wrapper.layout-film35 .sprocket-left { left: 8px; }
-.strip-wrapper.layout-film35 .sprocket-right { right: 8px; }
+.strip-wrapper.layout-film35 .sprocket-left,
+.strip-wrapper.frame-film_analog .sprocket-left { left: 8px; }
+.strip-wrapper.layout-film35 .sprocket-right,
+.strip-wrapper.frame-film_analog .sprocket-right { right: 8px; }
 .strip-wrapper.layout-film35 .strip-header,
-.strip-wrapper.layout-film35 .strip-footer {
-  color: #f59e0b;
-  font-family: 'Courier Prime', monospace;
+.strip-wrapper.layout-film35 .strip-footer,
+.strip-wrapper.frame-film_analog .strip-header,
+.strip-wrapper.frame-film_analog .strip-footer {
+  color: #f59e0b !important;
+  font-family: 'Courier Prime', monospace !important;
 }
 
 /* =========================================================

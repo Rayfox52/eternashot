@@ -579,9 +579,10 @@ document.addEventListener('DOMContentLoaded', () => {
       cutDivider.classList.toggle('hidden', currentLayout !== 'twin');
     }
 
-    // Toggle sprockets in film35 layout
+    // Toggle sprockets in film35 layout or film_analog frame
     const sprockets = stripWrapper.querySelectorAll('.sprocket-track');
-    sprockets.forEach(s => s.classList.toggle('hidden', currentLayout !== 'film35'));
+    const isFilmMode = currentLayout === 'film35' || currentFrameTemplate === 'film_analog';
+    sprockets.forEach(s => s.classList.toggle('hidden', !isFilmMode));
 
     updateStripUI();
     scaleStripToFit();
@@ -651,6 +652,10 @@ document.addEventListener('DOMContentLoaded', () => {
       stripWrapper.className = `strip-wrapper layout-${currentLayout} frame-${frame}`;
       stripWrapper.style.backgroundColor = '';
       stripWrapper.style.color = '';
+
+      const sprockets = stripWrapper.querySelectorAll('.sprocket-track');
+      const isFilmMode = currentLayout === 'film35' || frame === 'film_analog';
+      sprockets.forEach(s => s.classList.toggle('hidden', !isFilmMode));
     });
   });
 
@@ -960,8 +965,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 5. Draw Sprockets if film35 layout
-    if (currentLayout === 'film35') {
+    // 5. Draw Sprockets if film35 layout or film_analog template
+    if (currentLayout === 'film35' || currentFrameTemplate === 'film_analog') {
       drawFilmSprockets(exportCtx, exportW, exportH, scale);
     }
 
@@ -1048,8 +1053,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawFrameBackgroundOnCanvas(ctx, w, h, scale) {
-    // 35mm Film Roll layout is always an authentic analog dark film roll
-    if (currentLayout === 'film35') {
+    // 35mm Film Roll layout or film_analog frame is always an authentic analog dark film roll
+    if (currentLayout === 'film35' || currentFrameTemplate === 'film_analog') {
       ctx.fillStyle = '#0a0a0c'; // Deep 35mm film base
       ctx.fillRect(0, 0, w, h);
       return;
@@ -1150,6 +1155,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function drawRoundedRect(ctx, x, y, w, h, r) {
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
   function drawFilmSprockets(ctx, w, h, scale) {
     const sprockW = 16 * scale;
     const sprockH = 12 * scale;
@@ -1162,13 +1184,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Draw rounded sprocket perforation holes on left and right borders
     ctx.fillStyle = '#ffffff';
     for (let y = 14 * scale; y < h - 20 * scale; y += sprockH + gap) {
-      ctx.beginPath();
-      ctx.roundRect(leftX, y, sprockW, sprockH, radius);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.roundRect(rightX, y, sprockW, sprockH, radius);
-      ctx.fill();
+      drawRoundedRect(ctx, leftX, y, sprockW, sprockH, radius);
+      drawRoundedRect(ctx, rightX, y, sprockW, sprockH, radius);
     }
 
     // 2. Add authentic 35mm film edge numbers & stamps
@@ -1190,10 +1207,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const captionRect = stripCaptionDisplay.getBoundingClientRect();
     const dateRect = stripDateDisplay.getBoundingClientRect();
 
+    const isFilm = currentLayout === 'film35' || currentFrameTemplate === 'film_analog';
+
     let textColor = '#111827';
     if (['black', 'film_analog'].includes(currentFrameTemplate)) textColor = '#ffffff';
     if (currentFrameTemplate === 'cyber') textColor = '#00f0ff';
-    if (currentFrameTemplate === 'film_analog' || currentLayout === 'film35') textColor = '#f59e0b';
+    if (isFilm) textColor = '#f59e0b';
     if (currentFrameTemplate === 'checker_pink') textColor = '#c9184a';
     if (currentFrameTemplate === 'hearts_pattern') textColor = '#a4133c';
     if (currentFrameTemplate === 'denim_y2k') textColor = '#f1f6f9';
@@ -1201,8 +1220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ctx.fillStyle = textColor;
     ctx.textAlign = 'center';
-
-    const isFilm = currentLayout === 'film35';
 
     // 1. Header
     const headX = ((headerRect.left + headerRect.width / 2 - stripRect.left) / stripRect.width) * exportW;
@@ -1229,6 +1246,21 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.globalAlpha = 0.85;
     ctx.fillText(dateFormatted, dateX, dateY);
     ctx.globalAlpha = 1.0;
+
+    // 4. Meta Badge (ETERNASHOT LAB · VER.2000)
+    const tagElem = stripWrapper.querySelector('.strip-studio-tag') || stripWrapper.querySelector('.strip-tag-badge');
+    if (tagElem) {
+      const tagRect = tagElem.getBoundingClientRect();
+      const tagX = ((tagRect.left + tagRect.width / 2 - stripRect.left) / stripRect.width) * exportW;
+      const tagY = ((tagRect.top + tagRect.height / 2 + 3 - stripRect.top) / stripRect.height) * exportH;
+      ctx.font = isFilm
+        ? `700 ${Math.round(7.5 * scale)}px 'Courier Prime', monospace`
+        : `700 ${Math.round(7.5 * scale)}px 'Space Grotesk', monospace`;
+      ctx.fillStyle = isFilm ? '#f59e0b' : textColor;
+      ctx.globalAlpha = 0.75;
+      ctx.fillText('ETERNASHOT LAB · VER.2000', tagX, tagY);
+      ctx.globalAlpha = 1.0;
+    }
   }
 
   function svgToImage(svgString) {
