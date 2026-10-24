@@ -13,9 +13,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
+import android.webkit.ConsoleMessage;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -34,10 +38,15 @@ import com.getcapacitor.BridgeActivity;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends BridgeActivity {
     private static final String TAG = "EternaShotNative";
     private static final int PERMISSION_REQ_CODE = 101;
+
+    private PermissionRequest pendingWebPermissionRequest = null;
+    private boolean permissionRequestedOnce = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -55,6 +64,14 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         // Auto-activate camera when returning to app if permission is granted
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            if (pendingWebPermissionRequest != null) {
+                try {
+                    pendingWebPermissionRequest.grant(pendingWebPermissionRequest.getResources());
+                } catch (Exception e) {
+                    Log.e(TAG, "Error granting pending WebRTC permission onResume", e);
+                }
+                pendingWebPermissionRequest = null;
+            }
             runOnUiThread(() -> {
                 if (getBridge() != null && getBridge().getWebView() != null) {
                     getBridge().getWebView().postDelayed(() -> {
@@ -62,7 +79,7 @@ public class MainActivity extends BridgeActivity {
                             "if (window.initCamera && typeof window.hasActiveCameraStream === 'function' && !window.hasActiveCameraStream()) { window.initCamera(true); }",
                             null
                         );
-                    }, 300);
+                    }, 350);
                 }
             });
         }
@@ -70,12 +87,9 @@ public class MainActivity extends BridgeActivity {
 
     private void requestRequiredPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            java.util.List<String> list = new java.util.ArrayList<>();
+            List<String> list = new ArrayList<>();
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 list.add(Manifest.permission.CAMERA);
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                list.add(Manifest.permission.RECORD_AUDIO);
             }
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -84,6 +98,7 @@ public class MainActivity extends BridgeActivity {
             }
 
             if (!list.isEmpty()) {
+                permissionRequestedOnce = true;
                 ActivityCompat.requestPermissions(this, list.toArray(new String[0]), PERMISSION_REQ_CODE);
             }
         }
@@ -104,22 +119,38 @@ public class MainActivity extends BridgeActivity {
                 // Add Native JavaScript Bridge for direct save to gallery, native print, and permission request
                 webView.addJavascriptInterface(new NativeAndroidBridge(this), "AndroidBridge");
 
-                // Get existing Capacitor WebChromeClient for delegation (file chooser, alerts, etc.)
+                // Get existing Capacitor WebChromeClient for complete delegation
                 final WebChromeClient defaultClient = webView.getWebChromeClient();
 
-                // Custom WebChromeClient: Automatically grant WebRTC camera & audio permissions to WebView
+                // Custom WebChromeClient: Synchronize WebRTC camera permissions with Android runtime permissions
                 webView.setWebChromeClient(new WebChromeClient() {
                     @Override
                     public void onPermissionRequest(final PermissionRequest request) {
                         runOnUiThread(() -> {
                             try {
-                                if (request != null) {
+                                if (request == null) return;
+                                Log.d(TAG, "onPermissionRequest called for: " + java.util.Arrays.toString(request.getResources()));
+
+                                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    // OS permission granted: safe to grant WebRTC hardware access immediately
                                     request.grant(request.getResources());
+                                } else {
+                                    // OS permission NOT granted: store request and prompt user for OS permission
+                                    pendingWebPermissionRequest = request;
+                                    requestRequiredPermissions();
                                 }
                             } catch (Exception e) {
-                                Log.e(TAG, "Failed to grant webview permission", e);
+                                Log.e(TAG, "Failed onPermissionRequest", e);
                             }
                         });
+                    }
+
+                    @Override
+                    public void onPermissionRequestCanceled(PermissionRequest request) {
+                        super.onPermissionRequestCanceled(request);
+                        if (pendingWebPermissionRequest == request) {
+                            pendingWebPermissionRequest = null;
+                        }
                     }
 
                     @Override
@@ -145,6 +176,31 @@ public class MainActivity extends BridgeActivity {
                         }
                         return super.onJsConfirm(view, url, message, result);
                     }
+
+                    @Override
+                    public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
+                        if (defaultClient != null) {
+                            return defaultClient.onJsPrompt(view, url, message, defaultValue, result);
+                        }
+                        return super.onJsPrompt(view, url, message, defaultValue, result);
+                    }
+
+                    @Override
+                    public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                        if (defaultClient != null) {
+                            return defaultClient.onConsoleMessage(consoleMessage);
+                        }
+                        return super.onConsoleMessage(consoleMessage);
+                    }
+
+                    @Override
+                    public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                        if (defaultClient != null) {
+                            defaultClient.onGeolocationPermissionsShowPrompt(origin, callback);
+                        } else {
+                            super.onGeolocationPermissionsShowPrompt(origin, callback);
+                        }
+                    }
                 });
             }
         } catch (Exception e) {
@@ -165,6 +221,14 @@ public class MainActivity extends BridgeActivity {
             }
 
             if (cameraGranted) {
+                if (pendingWebPermissionRequest != null) {
+                    try {
+                        pendingWebPermissionRequest.grant(pendingWebPermissionRequest.getResources());
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error granting pending WebRTC permission", e);
+                    }
+                    pendingWebPermissionRequest = null;
+                }
                 runOnUiThread(() -> {
                     if (getBridge() != null && getBridge().getWebView() != null) {
                         getBridge().getWebView().postDelayed(() -> {
@@ -173,6 +237,22 @@ public class MainActivity extends BridgeActivity {
                                 null
                             );
                         }, 250);
+                    }
+                });
+            } else {
+                if (pendingWebPermissionRequest != null) {
+                    try {
+                        pendingWebPermissionRequest.deny();
+                    } catch (Exception ignored) {}
+                    pendingWebPermissionRequest = null;
+                }
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Izin kamera dibutuhkan untuk live preview studio.", Toast.LENGTH_LONG).show();
+                    if (getBridge() != null && getBridge().getWebView() != null) {
+                        getBridge().getWebView().evaluateJavascript(
+                            "if (window.onCameraPermissionDenied) { window.onCameraPermissionDenied(); }",
+                            null
+                        );
                     }
                 });
             }
@@ -192,7 +272,33 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void requestCameraPermission() {
             runOnUiThread(() -> {
-                requestRequiredPermissions();
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    if (getBridge() != null && getBridge().getWebView() != null) {
+                        getBridge().getWebView().evaluateJavascript(
+                            "if (window.initCamera) { window.initCamera(true); }",
+                            null
+                        );
+                    }
+                } else {
+                    boolean showRationale = ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.CAMERA);
+                    if (!showRationale && permissionRequestedOnce) {
+                        Toast.makeText(
+                            MainActivity.this,
+                            "Silakan aktifkan Izin Kamera di Pengaturan Aplikasi agar live studio dapat terbuka.",
+                            Toast.LENGTH_LONG
+                        ).show();
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            intent.setData(Uri.fromParts("package", getPackageName(), null));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Cannot open app settings", e);
+                        }
+                    } else {
+                        permissionRequestedOnce = true;
+                        requestRequiredPermissions();
+                    }
+                }
             });
         }
 

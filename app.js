@@ -203,11 +203,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================
   // 2. WEBCAM INITIALIZATION & STREAM ENGINE
   // =========================================================
+  function getUserMediaWithTimeout(constraints, timeoutMs = 4000) {
+    return Promise.race([
+      navigator.mediaDevices.getUserMedia(constraints),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('CAMERA_TIMEOUT')), timeoutMs);
+      })
+    ]);
+  }
+
+  let isInitializingCamera = false;
   async function initCamera(userTriggered = false) {
+    if (isInitializingCamera) return;
+    isInitializingCamera = true;
     updateCameraStatus('connecting', 'Kamera...');
 
     if (activeStream) {
-      activeStream.getTracks().forEach(track => track.stop());
+      try {
+        activeStream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
       activeStream = null;
     }
 
@@ -215,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // If mediaDevices is missing (e.g. mobile Chrome on HTTP non-secure origin)
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      console.warn('mediaDevices.getUserMedia not available on this origin or browser.');
+      isInitializingCamera = false;
       showOfflineOverlay(
         'Kamera Dibatasi Browser',
         'Browser melarang streaming kamera di jaringan Wi-Fi lokal HTTP. Klik tombol di bawah untuk langsung menggunakan kamera bawaan HP Anda atau coba Foto Sample!'
@@ -232,36 +246,51 @@ document.addEventListener('DOMContentLoaded', () => {
       : { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints1);
+      stream = await getUserMediaWithTimeout(constraints1, 4000);
     } catch (err1) {
       console.warn('Primary camera constraints failed, attempting fallback:', err1);
       error = err1;
 
-      // Attempt 2: Minimal fallback without resolution or facingMode requirements
+      // Attempt 2: Flexible constraints without resolution lock
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const constraints2 = isMobile
+          ? { video: { facingMode: currentFacingMode }, audio: false }
+          : { video: true, audio: false };
+        stream = await getUserMediaWithTimeout(constraints2, 3500);
         error = null;
       } catch (err2) {
         console.warn('Fallback camera constraints failed:', err2);
-        error = err2;
+        // Attempt 3: Bare minimal video: true
+        try {
+          stream = await getUserMediaWithTimeout({ video: true, audio: false }, 3000);
+          error = null;
+        } catch (err3) {
+          console.warn('All camera constraints failed:', err3);
+          error = err3;
+        }
       }
     }
 
     if (stream) {
       activeStream = stream;
       video.srcObject = stream;
-      try {
-        await video.play();
-      } catch (playErr) {
-        console.warn('video.play() failed:', playErr);
-      }
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('autoplay', 'true');
+      video.muted = true;
 
-      video.onloadedmetadata = () => {
+      video.play().catch(playErr => {
+        console.warn('video.play() failed:', playErr);
+      });
+
+      const updateDimensions = () => {
         if (video.videoWidth && video.videoHeight) {
           liveCanvas.width = video.videoWidth;
           liveCanvas.height = video.videoHeight;
         }
       };
+
+      video.onloadedmetadata = updateDimensions;
+      video.oncanplay = updateDimensions;
       liveCanvas.width = video.videoWidth || 1280;
       liveCanvas.height = video.videoHeight || 720;
 
@@ -270,8 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
       startLiveRenderLoop();
     } else {
       let desc = 'Klik "Akses Kamera" di bawah untuk mengizinkan dan mengaktifkan kamera studio Anda.';
-      if (error && error.name === 'NotAllowedError') {
+      if (error && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')) {
         desc = 'Akses kamera belum diizinkan. Silakan klik "Akses Kamera" di bawah atau izinkan pada notifikasi izin perangkat.';
+      } else if (error && error.message === 'CAMERA_TIMEOUT') {
+        desc = 'Menunggu izin kamera sistem. Ketuk "Akses Kamera" di bawah atau periksa izin di Pengaturan HP Anda.';
       } else if (error && error.name === 'NotFoundError') {
         desc = 'Tidak ada perangkat kamera yang terdeteksi pada perangkat ini.';
       }
@@ -283,14 +314,21 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!activeStream) {
             await initCamera(true);
           }
-        }, 1500);
+        }, 1800);
       }
     }
+    isInitializingCamera = false;
   }
 
   // Expose to window for Android Native Bridge auto-activation
   window.initCamera = initCamera;
   window.hasActiveCameraStream = () => !!activeStream;
+  window.onCameraPermissionDenied = () => {
+    showOfflineOverlay(
+      'Izin Kamera Ditolak',
+      'Izin kamera belum aktif. Silakan klik "Akses Kamera" atau aktifkan Izin Kamera di Pengaturan Aplikasi HP Anda.'
+    );
+  };
 
   function showOfflineOverlay(title, desc) {
     if (cameraOfflineOverlay) {
@@ -313,9 +351,13 @@ document.addEventListener('DOMContentLoaded', () => {
     cameraStatusBadge.querySelector('.status-text').textContent = text;
   }
 
+  let liveRenderRunning = false;
   function startLiveRenderLoop() {
+    if (liveRenderRunning) return;
+    liveRenderRunning = true;
+
     function render() {
-      if (video.readyState >= video.HAVE_CURRENT_DATA) {
+      if (activeStream && (video.readyState >= 2 || (video.videoWidth > 0 && !video.paused))) {
         liveCtx.save();
         const filter = FILTER_PRESETS.find(f => f.id === activeFilterId);
         liveCtx.filter = filter ? filter.css : 'none';
