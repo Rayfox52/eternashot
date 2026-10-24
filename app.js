@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnMirror = document.getElementById('btn-mirror');
   const btnSwitchCam = document.getElementById('btn-switch-cam');
   const btnSoundToggle = document.getElementById('btn-sound-toggle');
-  const soundIcon = document.getElementById('sound-icon');
+  const soundIconContainer = document.getElementById('sound-icon-container');
   const btnUploadPhotos = document.getElementById('btn-upload-photos');
   const photoFileInput = document.getElementById('photo-file-input');
   const mobileCamInput = document.getElementById('mobile-cam-input');
@@ -565,7 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnSoundToggle) {
-    btnSoundToggle.addEventListener('click', () => {
+    btnSoundToggle.addEventListener('click', (e) => {
+      e.preventDefault();
       isSoundEnabled = !isSoundEnabled;
       updateSoundUI();
       if (isSoundEnabled && window.soundEffects) {
@@ -1487,28 +1488,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // =========================================================
-  // 10. CONTROLS: MIRROR, CAMERA SWITCH, AUDIO, QR MODAL
+  // 10. QR MODAL & SHARE CONTROLS
   // =========================================================
-  btnMirror.addEventListener('click', () => {
-    isMirrored = !isMirrored;
-    liveCanvas.classList.toggle('unmirrored', !isMirrored);
-  });
-
-  btnSwitchCam.addEventListener('click', () => {
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-    initCamera();
-  });
-
-  btnSoundToggle.addEventListener('click', () => {
-    isSoundEnabled = !isSoundEnabled;
-    if (isSoundEnabled) {
-      soundIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
-      btnSoundToggle.title = 'Suara Aktif';
-    } else {
-      soundIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`;
-      btnSoundToggle.title = 'Suara Dimatikan';
-    }
-  });
 
   btnShareQr.addEventListener('click', () => {
     modalQr.classList.remove('hidden');
