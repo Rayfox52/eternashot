@@ -1,0 +1,28 @@
+{
+  "name": "EternaShot // Y2K Web Photo Booth",
+  "short_name": "EternaShot",
+  "description": "Y2K Neo-Brutalist Online Photobooth. Ambil foto 4-pose retro estetik dengan webcam dan ekspor strip film 35mm seketika!",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

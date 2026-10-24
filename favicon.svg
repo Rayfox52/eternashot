@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Solid Cyber Lime Rounded Base -->
+  <rect width="128" height="128" rx="26" fill="#ccff00" stroke="#000000" stroke-width="8"/>
+  <!-- ETN Text -->
+  <text x="64" y="66" font-family="'Arial Black', 'Impact', sans-serif" font-size="46" font-weight="900" text-anchor="middle" fill="#000000" letter-spacing="-1">ETN</text>
+  <!-- 00 Text with neon lens dot -->
+  <text x="64" y="108" font-family="'Arial Black', 'Impact', sans-serif" font-size="42" font-weight="900" text-anchor="middle" fill="#000000">_00</text>
+</svg>

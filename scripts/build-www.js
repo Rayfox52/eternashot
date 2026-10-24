@@ -14,7 +14,15 @@ const filesToCopy = [
   'app.js',
   'audio.js',
   'stickers.js',
-  'sample_photos.js'
+  'sample_photos.js',
+  'manifest.json',
+  'favicon.svg',
+  'favicon-32x32.png',
+  'favicon.ico',
+  'apple-touch-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+  'logo.svg'
 ];
 
 filesToCopy.forEach(file => {
