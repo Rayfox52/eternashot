@@ -17,6 +17,7 @@ node_modules/
 www/
 *.apk
 *.aab
+downloaded-apk/
 
 # Android Gradle cache
 .gradle/
