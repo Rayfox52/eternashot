@@ -947,6 +947,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         drawImageCover(exportCtx, img, relX, relY, relW, relH);
         exportCtx.restore();
+
+        // Crisp border stroke matching preview
+        exportCtx.save();
+        exportCtx.strokeStyle = currentLayout === 'film35' ? 'rgba(255, 255, 255, 0.25)' : '#000000';
+        exportCtx.lineWidth = 1.5 * scale;
+        exportCtx.strokeRect(relX, relY, relW, relH);
+        exportCtx.restore();
       } else {
         exportCtx.fillStyle = 'rgba(0,0,0,0.1)';
         exportCtx.fillRect(relX, relY, relW, relH);
@@ -1041,6 +1048,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawFrameBackgroundOnCanvas(ctx, w, h, scale) {
+    // 35mm Film Roll layout is always an authentic analog dark film roll
+    if (currentLayout === 'film35') {
+      ctx.fillStyle = '#0a0a0c'; // Deep 35mm film base
+      ctx.fillRect(0, 0, w, h);
+      return;
+    }
+
     switch (currentFrameTemplate) {
       case 'white':
         ctx.fillStyle = '#ffffff';
@@ -1137,15 +1151,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawFilmSprockets(ctx, w, h, scale) {
-    const sprockW = 14 * scale;
+    const sprockW = 16 * scale;
     const sprockH = 12 * scale;
-    const gap = 10 * scale;
+    const gap = 12 * scale;
+    const leftX = 8 * scale;
+    const rightX = w - 8 * scale - sprockW;
+    const radius = 2.5 * scale;
 
+    ctx.save();
+    // 1. Draw rounded sprocket perforation holes on left and right borders
     ctx.fillStyle = '#ffffff';
     for (let y = 14 * scale; y < h - 20 * scale; y += sprockH + gap) {
-      ctx.fillRect(8 * scale, y, sprockW, sprockH);
-      ctx.fillRect(w - 8 * scale - sprockW, y, sprockW, sprockH);
+      ctx.beginPath();
+      ctx.roundRect(leftX, y, sprockW, sprockH, radius);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.roundRect(rightX, y, sprockW, sprockH, radius);
+      ctx.fill();
     }
+
+    // 2. Add authentic 35mm film edge numbers & stamps
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = `700 ${Math.round(8 * scale)}px 'Courier Prime', monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText('▶ 01A', 28 * scale, 18 * scale);
+    ctx.fillText('ETN-35MM · 400', 28 * scale, h - 14 * scale);
+
+    ctx.textAlign = 'right';
+    ctx.fillText('SAFETY FILM', w - 28 * scale, 18 * scale);
+    ctx.fillText('▶ 04', w - 28 * scale, h - 14 * scale);
+    ctx.restore();
   }
 
   function drawStripTypography(ctx, stripRect, exportW, exportH, scale) {
@@ -1166,22 +1202,30 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillStyle = textColor;
     ctx.textAlign = 'center';
 
+    const isFilm = currentLayout === 'film35';
+
     // 1. Header
     const headX = ((headerRect.left + headerRect.width / 2 - stripRect.left) / stripRect.width) * exportW;
     const headY = ((headerRect.top + headerRect.height / 2 + 4 - stripRect.top) / stripRect.height) * exportH;
-    ctx.font = `800 ${Math.round(10 * scale)}px 'Space Grotesk', monospace`;
+    ctx.font = isFilm
+      ? `700 ${Math.round(10 * scale)}px 'Courier Prime', monospace`
+      : `800 ${Math.round(10 * scale)}px 'Space Grotesk', monospace`;
     ctx.fillText('ETERNASHOT · ARCHIVE 2000', headX, headY);
 
     // 2. Caption
     const capX = ((captionRect.left + captionRect.width / 2 - stripRect.left) / stripRect.width) * exportW;
     const capY = ((captionRect.top + captionRect.height / 2 + 5 - stripRect.top) / stripRect.height) * exportH;
-    ctx.font = `700 ${Math.round(12 * scale)}px 'Space Grotesk', monospace`;
+    ctx.font = isFilm
+      ? `700 ${Math.round(11 * scale)}px 'Courier Prime', monospace`
+      : `700 ${Math.round(12 * scale)}px 'Space Grotesk', monospace`;
     ctx.fillText(captionInput.value || 'ETERNASHOT // 2000-ARCHIVE', capX, capY);
 
     // 3. Date
     const dateX = ((dateRect.left + dateRect.width / 2 - stripRect.left) / stripRect.width) * exportW;
     const dateY = ((dateRect.top + dateRect.height / 2 + 4 - stripRect.top) / stripRect.height) * exportH;
-    ctx.font = `700 ${Math.round(9 * scale)}px 'Space Grotesk', monospace`;
+    ctx.font = isFilm
+      ? `700 ${Math.round(9 * scale)}px 'Courier Prime', monospace`
+      : `700 ${Math.round(9 * scale)}px 'Space Grotesk', monospace`;
     ctx.globalAlpha = 0.85;
     ctx.fillText(dateFormatted, dateX, dateY);
     ctx.globalAlpha = 1.0;
