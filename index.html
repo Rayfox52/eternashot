@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>EternaShot // Y2K Neo-Brutalist Web Photo Booth</title>
+  <meta name="description" content="EternaShot - Y2K Neo-Brutalist Online Photobooth. Ambil foto 4-pose retro estetik dengan webcam Anda di HP, Laptop, atau Tablet dengan format strip vintage, stiker, dan ekspor HD seketika!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Flash overlay for camera snap -->
+  <div id="flash-overlay" class="flash-overlay"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-logo" title="ETERNASHOT // 00">
+        <span class="brand-stamp">ETN_00</span>
+      </div>
+      <div class="brand-info">
+        <h1 class="brand-title">EternaShot <span class="brand-ver-badge">SYS.2000</span></h1>
+        <p class="brand-tagline">Y2K NEO-BRUTALIST PHOTO LAB</p>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <div id="camera-status" class="status-badge status-connecting" title="Status Kamera">
+        <span class="status-dot"></span>
+        <span class="status-text">Standby</span>
+      </div>
+      <button id="btn-sound-toggle" class="btn-icon" title="Toggle Suara Shutter" aria-label="Toggle Suara">
+        <svg class="ui-icon" id="sound-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      </button>
+      <button id="btn-upload-photos" class="btn-secondary" title="Unggah Foto dari Perangkat">
+        <svg class="btn-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span class="btn-label-text">Unggah Foto</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile & Tablet Responsive Tab Switcher -->
+  <nav class="mobile-tab-nav" id="mobile-tab-nav" aria-label="Navigasi Studio">
+    <button class="mobile-tab-btn active" data-tab="camera">
+      <svg class="tab-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+      </svg>
+      <span class="tab-label">Kamera Studio</span>
+    </button>
+    <button class="mobile-tab-btn" data-tab="editor">
+      <svg class="tab-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+        <line x1="7" y1="2" x2="7" y2="22"></line>
+        <line x1="17" y1="2" x2="17" y2="22"></line>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+      </svg>
+      <span class="tab-label">Strip & Editor</span>
+      <span id="mobile-photo-count" class="tab-badge">0/4</span>
+    </button>
+  </nav>
+
+  <!-- Main Studio Workspace Container (Responsive Grid / Stack) -->
+  <main class="studio-container">
+    <!-- LEFT PANEL: CAMERA VIEWPORT & CONTROLS -->
+    <section class="camera-section studio-panel" id="panel-camera">
+      <div class="camera-card">
+        <!-- Live Viewport Container (Studio Mirror Booth Viewfinder) -->
+        <div class="viewport-wrapper">
+          <video id="webcam-video" autoplay playsinline muted></video>
+          <canvas id="live-canvas"></canvas>
+
+          <!-- Studio Viewfinder Corner Framing Brackets & Y2K Digicam OSD -->
+          <div class="viewfinder-frame">
+            <span class="vf-corner vf-tl"></span>
+            <span class="vf-corner vf-tr"></span>
+            <span class="vf-corner vf-bl"></span>
+            <span class="vf-corner vf-br"></span>
+            <span class="vf-crosshair">+</span>
+            <div class="vf-osd-top">
+              <span class="vf-osd-tag">[REC ●]</span>
+              <span class="vf-osd-tag">[4:3 HD]</span>
+            </div>
+            <div class="vf-osd-bottom">
+              <span class="vf-osd-tag">ETN-2000 // AF-LOCK</span>
+              <span class="vf-osd-tag">ISO 400</span>
+            </div>
+          </div>
+
+          <!-- Camera Offline / Interactive Permission Overlay -->
+          <div id="camera-offline-overlay" class="camera-offline-overlay">
+            <div class="offline-icon-pulse">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </div>
+            <div class="offline-title">Kamera Studio Standby</div>
+            <p class="offline-desc" id="offline-desc-text">
+              Izinkan akses webcam untuk memulai sesi foto studio, buka kamera HP langsung, atau coba dengan foto sample.
+            </p>
+            <div class="offline-actions-box">
+              <button id="btn-activate-camera" class="btn-prompt-primary">
+                Aktifkan Kamera Laptop
+              </button>
+              <button id="btn-open-mobile-cam" class="btn-prompt-secondary">
+                Buka Kamera HP Langsung
+              </button>
+              <button id="btn-use-sample-photos" class="btn-prompt-glass">
+                Gunakan Foto Sample (Demo)
+              </button>
+            </div>
+          </div>
+
+          <!-- Countdown Overlay -->
+          <div id="countdown-overlay" class="countdown-overlay hidden">
+            <div id="countdown-number" class="countdown-number">3</div>
+            <div id="pose-instruction" class="pose-instruction">Bersiap untuk Pose 1</div>
+          </div>
+
+          <!-- Pose Progress Bar -->
+          <div class="pose-progress-bar">
+            <div class="progress-pill" id="pill-0"><span class="step-num">01</span> Senyum</div>
+            <div class="progress-pill" id="pill-1"><span class="step-num">02</span> V-Sign</div>
+            <div class="progress-pill" id="pill-2"><span class="step-num">03</span> Heart</div>
+            <div class="progress-pill" id="pill-3"><span class="step-num">04</span> Free</div>
+          </div>
+
+          <!-- BTS Recording Indicator -->
+          <div id="bts-indicator" class="bts-indicator hidden">
+            <span class="rec-dot"></span> BTS REC
+          </div>
+
+          <!-- Mirror & Camera Quick Buttons -->
+          <div class="viewport-quick-tools">
+            <button id="btn-mirror" class="btn-glass" title="Cerminkan Tampilan Kamera">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"></path>
+                <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"></path>
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+              </svg>
+              Mirror
+            </button>
+            <button id="btn-switch-cam" class="btn-glass" title="Ganti Lensa Kamera">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Ganti Lensa
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Selector Carousel -->
+        <div class="filters-container">
+          <div class="filters-header">
+            <span class="section-label">Pilihan Tone & Filter:</span>
+            <span id="active-filter-name" class="active-filter-tag">Original</span>
+          </div>
+          <div class="filter-pills-row" id="filter-pills">
+            <!-- Filter items injected by JS -->
+          </div>
+        </div>
+
+        <!-- Capture Trigger Section -->
+        <div class="camera-actions">
+          <button id="btn-start-session" class="btn-primary-capture">
+            <span class="shutter-lens-ring"></span>
+            <span class="btn-text-main">CAPTURE 4 CUTS [SNAP]</span>
+            <span class="btn-subtext">AUTO-TRIGGER // 3-SEC INTERVAL</span>
+          </button>
+          <button id="btn-retake-all" class="btn-danger hidden">
+            RESET ALL
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: PHOTO STRIP LIVE PREVIEW & STUDIO CUSTOMIZER -->
+    <section class="editor-section studio-panel mobile-tab-hidden" id="panel-editor">
+      <div class="editor-card">
+        <div class="editor-header">
+          <h2>Preview Strip Foto</h2>
+          <span class="badge-ready" id="strip-status-badge">Menunggu 4 Foto</span>
+        </div>
+
+        <!-- Strip Preview Stage -->
+        <div class="strip-stage-outer" id="strip-stage-outer">
+          <div class="strip-scaler-box" id="strip-scaler-box">
+            <div id="strip-wrapper" class="strip-wrapper layout-vertical frame-white">
+              <!-- Header Watermark -->
+              <div class="strip-header">
+                <span class="strip-logo">ETERNASHOT · ARCHIVE 2000</span>
+              </div>
+
+              <!-- Left film sprockets for film35 layout -->
+              <div class="sprocket-track sprocket-left hidden"></div>
+
+              <!-- Photos Grid Container -->
+              <div id="strip-photos-grid" class="strip-photos-grid">
+                <div class="photo-slot" data-index="0">
+                  <div class="slot-placeholder"><span class="slot-tag">ETN-01</span></div>
+                  <img class="slot-img hidden" alt="Pose 1">
+                  <button class="btn-slot-retake hidden" title="Ambil Ulang Pose 1">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                  </button>
+                </div>
+
+                <div class="photo-slot" data-index="1">
+                  <div class="slot-placeholder"><span class="slot-tag">ETN-02</span></div>
+                  <img class="slot-img hidden" alt="Pose 2">
+                  <button class="btn-slot-retake hidden" title="Ambil Ulang Pose 2">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                  </button>
+                </div>
+
+                <div class="photo-slot" data-index="2">
+                  <div class="slot-placeholder"><span class="slot-tag">ETN-03</span></div>
+                  <img class="slot-img hidden" alt="Pose 3">
+                  <button class="btn-slot-retake hidden" title="Ambil Ulang Pose 3">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                  </button>
+                </div>
+
+                <div class="photo-slot" data-index="3">
+                  <div class="slot-placeholder"><span class="slot-tag">ETN-04</span></div>
+                  <img class="slot-img hidden" alt="Pose 4">
+                  <button class="btn-slot-retake hidden" title="Ambil Ulang Pose 4">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Right film sprockets for film35 layout -->
+              <div class="sprocket-track sprocket-right hidden"></div>
+
+              <!-- Cut divider line for Twin Strip layout -->
+              <div class="cut-divider-line hidden">
+                <span>CUT HERE</span>
+              </div>
+
+              <!-- Footer Caption & Date -->
+              <div class="strip-footer">
+                <div id="strip-caption-display" class="strip-caption">Sweet Memories</div>
+                <div class="strip-meta-row">
+                  <div id="strip-date-display" class="strip-date">2026.10.24</div>
+                  <div class="strip-studio-tag">ETERNASHOT LAB · VER.2000</div>
+                </div>
+              </div>
+
+              <!-- Sticker Interactive Layer (Draggable elements live here) -->
+              <div id="stickers-layer" class="stickers-layer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customization Controls Accordion / Tabs -->
+        <div class="customizer-panel">
+          <!-- 1. Layout Mode Selection (Carousel) -->
+          <div class="custom-control-group">
+            <div class="control-label-row">
+              <label class="control-label">Pilihan Format Strip:</label>
+              <span id="active-layout-label" class="sub-label-tag">Vertikal (1x4)</span>
+            </div>
+            <div class="carousel-wrapper">
+              <button class="carousel-nav-btn prev" data-scroll="layout-selector-grid" aria-label="Geser Kiri">‹</button>
+              <div class="layout-selector-carousel horizontal-carousel" id="layout-selector-grid">
+                <button class="layout-btn active" data-layout="vertical" title="Strip Vertikal Klasik (1x4)">
+                  <span class="layout-glyph glyph-vertical"></span>
+                  <span class="layout-title">Vertikal 1x4</span>
+                </button>
+                <button class="layout-btn" data-layout="grid" title="Kotak Grid 2x2 (Album Square)">
+                  <span class="layout-glyph glyph-grid"></span>
+                  <span class="layout-title">Grid 2x2</span>
+                </button>
+                <button class="layout-btn" data-layout="twin" title="Twin Strip (2x4 Berdampingan)">
+                  <span class="layout-glyph glyph-twin"></span>
+                  <span class="layout-title">Twin 2-Strip</span>
+                </button>
+                <button class="layout-btn" data-layout="cinematic" title="Cinematic 3-Cut Landscape">
+                  <span class="layout-glyph glyph-cinematic"></span>
+                  <span class="layout-title">Wide 1x3</span>
+                </button>
+                <button class="layout-btn" data-layout="film35" title="Analog 35mm Film Roll">
+                  <span class="layout-glyph glyph-film"></span>
+                  <span class="layout-title">Film 35mm</span>
+                </button>
+              </div>
+              <button class="carousel-nav-btn next" data-scroll="layout-selector-grid" aria-label="Geser Kanan">›</button>
+            </div>
+          </div>
+
+          <!-- 2. Frame Template Selection (Carousel) -->
+          <div class="custom-control-group">
+            <div class="control-label-row">
+              <label class="control-label">Template & Tema Frame:</label>
+              <span id="active-frame-label" class="sub-label-tag">Cloud White</span>
+            </div>
+            <div class="carousel-wrapper">
+              <button class="carousel-nav-btn prev" data-scroll="frame-templates-grid" aria-label="Geser Kiri">‹</button>
+              <div class="frame-templates-carousel horizontal-carousel" id="frame-templates-grid">
+                <!-- Solid Pastels & Classic -->
+                <button class="frame-swatch-item active" data-frame="white" title="Cloud White">
+                  <span class="swatch-preview frame-bg-white"></span>
+                  <span class="swatch-label">White</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="black" title="Noir Black">
+                  <span class="swatch-preview frame-bg-black"></span>
+                  <span class="swatch-label">Noir</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="pink" title="Pastel Sakura">
+                  <span class="swatch-preview frame-bg-pink"></span>
+                  <span class="swatch-label">Sakura</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="lavender" title="Soft Lavender">
+                  <span class="swatch-preview frame-bg-lavender"></span>
+                  <span class="swatch-label">Lavender</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="butter" title="Butter Cream">
+                  <span class="swatch-preview frame-bg-butter"></span>
+                  <span class="swatch-label">Butter</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="matcha" title="Matcha Milk">
+                  <span class="swatch-preview frame-bg-matcha"></span>
+                  <span class="swatch-label">Matcha</span>
+                </button>
+
+                <!-- Designer & Y2K Patterns -->
+                <button class="frame-swatch-item" data-frame="cyber" title="Cyber Vaporwave">
+                  <span class="swatch-preview frame-bg-cyber"></span>
+                  <span class="swatch-label">Cyber</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="checker_black" title="Y2K Checkerboard Black">
+                  <span class="swatch-preview frame-bg-checker-black"></span>
+                  <span class="swatch-label">Checker</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="checker_pink" title="Kawaii Checkerboard Pink">
+                  <span class="swatch-preview frame-bg-checker-pink"></span>
+                  <span class="swatch-label">Pink Grid</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="film_analog" title="Analog Film 35mm">
+                  <span class="swatch-preview frame-bg-film-analog"></span>
+                  <span class="swatch-label">Film 35</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="hearts_pattern" title="Hearts Pattern">
+                  <span class="swatch-preview frame-bg-hearts"></span>
+                  <span class="swatch-label">Hearts</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="denim_y2k" title="Denim Blue">
+                  <span class="swatch-preview frame-bg-denim"></span>
+                  <span class="swatch-label">Denim</span>
+                </button>
+                <button class="frame-swatch-item" data-frame="newspaper" title="Vintage Newspaper">
+                  <span class="swatch-preview frame-bg-newspaper"></span>
+                  <span class="swatch-label">Gazette</span>
+                </button>
+
+                <!-- Custom Color Picker -->
+                <div class="custom-color-picker-item" title="Warna Kustom">
+                  <input type="color" id="custom-frame-color" value="#ffe3e8">
+                  <span class="swatch-preview custom-picker-btn">🎨</span>
+                  <span class="swatch-label">Custom</span>
+                </div>
+              </div>
+              <button class="carousel-nav-btn next" data-scroll="frame-templates-grid" aria-label="Geser Kanan">›</button>
+            </div>
+          </div>
+
+          <!-- 3. Text & Caption -->
+          <div class="custom-control-group">
+            <label class="control-label" for="caption-input">Teks Caption Strip:</label>
+            <div class="caption-input-row">
+              <input type="text" id="caption-input" placeholder="Tulis caption Y2K..." value="ETERNASHOT // 2000-ARCHIVE" maxlength="32">
+            </div>
+          </div>
+
+          <!-- 4. Stickers & Doodles (Carousel) -->
+          <div class="custom-control-group">
+            <div class="stickers-header-row">
+              <label class="control-label">Stiker & Emoji:</label>
+              <div class="sticker-header-actions">
+                <button id="btn-toggle-sticker-drawer" class="btn-expand-drawer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  <span>Koleksi Lengkap (150+)</span>
+                </button>
+                <button id="btn-clear-stickers" class="btn-text-action">Hapus Semua</button>
+              </div>
+            </div>
+
+            <!-- Quick Sticker Tray (Carousel) -->
+            <div class="carousel-wrapper">
+              <button class="carousel-nav-btn prev" data-scroll="stickers-tray" aria-label="Geser Kiri">‹</button>
+              <div class="stickers-tray-carousel horizontal-carousel" id="stickers-tray">
+                <!-- Quick items injected by JS -->
+              </div>
+              <button class="carousel-nav-btn next" data-scroll="stickers-tray" aria-label="Geser Kanan">›</button>
+            </div>
+
+            <!-- EXPANDABLE STICKER DRAWER / ACCORDION -->
+            <div id="sticker-drawer" class="sticker-drawer hidden">
+              <!-- Category Tabs -->
+              <div class="drawer-tabs-row" id="drawer-tabs-row">
+                <!-- Tab buttons injected by JS -->
+              </div>
+
+              <!-- Search input for emojis -->
+              <div class="drawer-search-row">
+                <input type="text" id="sticker-search-input" placeholder="Cari stiker atau emoji... (misal: hati, kucing, senyum)">
+              </div>
+
+              <!-- Grid of stickers / emojis for active category -->
+              <div class="drawer-grid" id="drawer-grid">
+                <!-- Items injected by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Export Actions -->
+          <div class="export-actions-row">
+            <button id="btn-download-strip" class="btn-download-primary" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Cetak / Unduh Strip</span>
+            </button>
+            <button id="btn-download-bts" class="btn-download-secondary" disabled>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+              <span>Video BTS</span>
+            </button>
+            <button id="btn-share-qr" class="btn-share" disabled>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2v2h-2z"/><path d="M18 14h2v2h-2z"/><path d="M14 18h2v2h-2z"/><path d="M18 18h2v2h-2z"/></svg>
+              <span>Kirim ke HP</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Hidden off-screen canvas for High-DPI final rendering -->
+  <canvas id="export-canvas" class="hidden"></canvas>
+
+  <!-- Hidden file inputs -->
+  <input type="file" id="photo-file-input" accept="image/*" multiple class="hidden">
+  <!-- Native Mobile Camera input -->
+  <input type="file" id="mobile-cam-input" accept="image/*" capture="user" class="hidden">
+
+  <!-- MODAL: QR Code & Mobile Share -->
+  <div id="modal-qr" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <button class="modal-close" id="btn-close-qr">&times;</button>
+      <div class="modal-content">
+        <div class="modal-icon-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <h3>Buka di HP Anda</h3>
+        <p>Pindai kode QR berikut untuk membuka dan membagikan strip foto Anda langsung di ponsel.</p>
+        <div class="qr-box" id="qr-container">
+          <svg class="qr-mockup" viewBox="0 0 160 160" width="160" height="160">
+            <rect width="160" height="160" rx="16" fill="#ffffff"/>
+            <rect x="20" y="20" width="35" height="35" rx="6" fill="#111827"/>
+            <rect x="25" y="25" width="25" height="25" rx="4" fill="#ffffff"/>
+            <rect x="30" y="30" width="15" height="15" rx="2" fill="#ff4365"/>
+
+            <rect x="105" y="20" width="35" height="35" rx="6" fill="#111827"/>
+            <rect x="110" y="25" width="25" height="25" rx="4" fill="#ffffff"/>
+            <rect x="115" y="30" width="15" height="15" rx="2" fill="#ff4365"/>
+
+            <rect x="20" y="105" width="35" height="35" rx="6" fill="#111827"/>
+            <rect x="25" y="110" width="25" height="25" rx="4" fill="#ffffff"/>
+            <rect x="30" y="115" width="15" height="15" rx="2" fill="#ff4365"/>
+
+            <rect x="70" y="70" width="20" height="20" rx="4" fill="#ff4365"/>
+            <text x="80" y="84" text-anchor="middle" font-family="'Space Grotesk', sans-serif" font-size="9" font-weight="800" fill="#ffffff">ETN</text>
+
+            <rect x="65" y="25" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="80" y="35" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="65" y="115" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="105" y="70" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="125" y="90" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="115" y="125" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="75" y="130" width="10" height="10" rx="2" fill="#333"/>
+            <rect x="25" y="75" width="10" height="10" rx="2" fill="#333"/>
+          </svg>
+        </div>
+        <div class="network-link-box">
+          <div class="net-url-label">Buka langsung di browser HP/Tablet Anda:</div>
+          <div class="net-url-field">
+            <input type="text" id="network-url-input" readonly value="http://192.168.18.159:3000">
+            <button id="btn-copy-network-url" class="btn-copy-url">Salin Link</button>
+          </div>
+        </div>
+        <div class="share-instructions">
+          <div class="step-item"><b>1.</b> Pastikan HP & Laptop terhubung ke Wi-Fi yang sama</div>
+          <div class="step-item"><b>2.</b> Buka browser HP Anda dan ketik URL di atas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Synthesizer & Stickers & Sample Photos Data -->
+  <script src="audio.js"></script>
+  <script src="stickers.js"></script>
+  <script src="sample_photos.js"></script>
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
