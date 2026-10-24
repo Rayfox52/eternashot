@@ -1168,27 +1168,23 @@ button {
   display: none;
 }
 
-/* 5. LAYOUT: FILM 35mm SPROCKET ROLL */
-.strip-wrapper.layout-film35,
-.strip-wrapper.frame-film_analog {
+/* 5. LAYOUT: FILM 35mm SPROCKET ROLL (Exclusively for layout-film35) */
+.strip-wrapper.layout-film35 {
   width: 230px !important;
   padding: 14px 34px 18px 34px !important;
   background: #0a0a0c !important;
   color: #f59e0b !important;
 }
-.strip-wrapper.layout-film35 .strip-photos-grid,
-.strip-wrapper.frame-film_analog .strip-photos-grid {
+.strip-wrapper.layout-film35 .strip-photos-grid {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.strip-wrapper.layout-film35 .photo-slot,
-.strip-wrapper.frame-film_analog .photo-slot {
+.strip-wrapper.layout-film35 .photo-slot {
   width: 100%;
   aspect-ratio: 4 / 3;
 }
-.strip-wrapper.layout-film35 .sprocket-track,
-.strip-wrapper.frame-film_analog .sprocket-track {
+.strip-wrapper.layout-film35 .sprocket-track {
   display: block !important;
   position: absolute;
   top: 8px;
@@ -1206,16 +1202,21 @@ button {
   opacity: 0.9;
   z-index: 4;
 }
-.strip-wrapper.layout-film35 .sprocket-left,
-.strip-wrapper.frame-film_analog .sprocket-left { left: 8px; }
-.strip-wrapper.layout-film35 .sprocket-right,
-.strip-wrapper.frame-film_analog .sprocket-right { right: 8px; }
+.strip-wrapper.layout-film35 .sprocket-left { left: 8px; }
+.strip-wrapper.layout-film35 .sprocket-right { right: 8px; }
 .strip-wrapper.layout-film35 .strip-header,
-.strip-wrapper.layout-film35 .strip-footer,
-.strip-wrapper.frame-film_analog .strip-header,
-.strip-wrapper.frame-film_analog .strip-footer {
+.strip-wrapper.layout-film35 .strip-footer {
   color: #f59e0b !important;
   font-family: 'Courier Prime', monospace !important;
+}
+
+/* Disabled styling for frame swatches during locked layout (e.g. Film 35mm) */
+.frame-swatch-item.disabled,
+.custom-color-picker-item.disabled {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+  filter: grayscale(100%);
+  cursor: not-allowed !important;
 }
 
 /* =========================================================
@@ -1247,8 +1248,10 @@ button {
 .frame-checker_black .strip-header,
 .frame-checker_black .strip-footer {
   background: #ffffff;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid #000000;
+  box-shadow: 2px 2px 0 #000000;
 }
 
 .frame-checker_pink {
@@ -1260,8 +1263,10 @@ button {
 .frame-checker_pink .strip-header,
 .frame-checker_pink .strip-footer {
   background: #ffffff;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid #c9184a;
+  box-shadow: 2px 2px 0 rgba(201, 24, 74, 0.4);
 }
 
 .frame-film_analog {

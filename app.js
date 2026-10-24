@@ -751,6 +751,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  let lastNonFilmFrame = 'white';
+
+  function updateFilm35Mode(isFilm) {
+    const frameSwatches = document.querySelectorAll('.frame-swatch-item');
+    const customPicker = document.querySelector('.custom-color-picker-item');
+    const customColor = document.getElementById('custom-frame-color');
+
+    if (isFilm) {
+      if (currentFrameTemplate !== 'film_analog') {
+        lastNonFilmFrame = currentFrameTemplate;
+      }
+      currentFrameTemplate = 'film_analog';
+      activeFrameLabel.textContent = 'Film 35mm (Analog Negative)';
+
+      frameSwatches.forEach(b => {
+        if (b.dataset.frame === 'film_analog') {
+          b.classList.add('active');
+          b.classList.remove('disabled');
+        } else {
+          b.classList.remove('active');
+          b.classList.add('disabled');
+        }
+      });
+      if (customPicker) customPicker.classList.add('disabled');
+      if (customColor) customColor.disabled = true;
+    } else {
+      frameSwatches.forEach(b => {
+        b.classList.remove('disabled');
+      });
+      if (customPicker) customPicker.classList.remove('disabled');
+      if (customColor) customColor.disabled = false;
+
+      // Revert if currently on film_analog
+      if (currentFrameTemplate === 'film_analog') {
+        currentFrameTemplate = lastNonFilmFrame || 'white';
+      }
+      activeFrameLabel.textContent = FRAME_NAMES[currentFrameTemplate] || 'Cloud White';
+
+      frameSwatches.forEach(b => {
+        b.classList.toggle('active', b.dataset.frame === currentFrameTemplate);
+      });
+    }
+
+    const sprockets = stripWrapper.querySelectorAll('.sprocket-track');
+    sprockets.forEach(s => s.classList.toggle('hidden', !isFilm));
+
+    stripWrapper.className = `strip-wrapper layout-${currentLayout} frame-${currentFrameTemplate}`;
+    stripWrapper.style.backgroundColor = '';
+    stripWrapper.style.color = '';
+  }
+
   // Layout Selector
   document.querySelectorAll('.layout-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -761,57 +812,57 @@ document.addEventListener('DOMContentLoaded', () => {
       currentLayout = layout;
       activeLayoutLabel.textContent = LAYOUT_NAMES[layout] || layout;
 
-      // Auto sync 35mm film frame template
-      if (layout === 'film35') {
-        currentFrameTemplate = 'film_analog';
-        activeFrameLabel.textContent = FRAME_NAMES['film_analog'] || 'Analog Film 35mm';
-        document.querySelectorAll('.frame-swatch-item').forEach(b => {
-          b.classList.toggle('active', b.dataset.frame === 'film_analog');
-        });
-      }
-
-      stripWrapper.className = `strip-wrapper layout-${layout} frame-${currentFrameTemplate}`;
-      stripWrapper.style.backgroundColor = '';
-      stripWrapper.style.color = '';
+      updateFilm35Mode(layout === 'film35');
       rebuildSlotsForLayout();
+      scaleStripToFit();
     });
   });
 
   // Frame Template Selector
   document.querySelectorAll('.frame-swatch-item').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.frame-swatch-item').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      if (btn.classList.contains('disabled')) return;
 
       const frame = btn.dataset.frame;
-      currentFrameTemplate = frame;
-      activeFrameLabel.textContent = FRAME_NAMES[frame] || frame;
 
-      // Auto sync 35mm film layout
+      // If user clicks Film 35 in frame swatch, switch layout to film35!
       if (frame === 'film_analog') {
         currentLayout = 'film35';
         activeLayoutLabel.textContent = LAYOUT_NAMES['film35'] || 'Analog 35mm Film Roll';
         document.querySelectorAll('.layout-btn').forEach(b => {
           b.classList.toggle('active', b.dataset.layout === 'film35');
         });
+        updateFilm35Mode(true);
         rebuildSlotsForLayout();
+        scaleStripToFit();
+        return;
       }
+
+      // Normal frame selection for any layout
+      document.querySelectorAll('.frame-swatch-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      currentFrameTemplate = frame;
+      lastNonFilmFrame = frame;
+      activeFrameLabel.textContent = FRAME_NAMES[frame] || frame;
 
       stripWrapper.className = `strip-wrapper layout-${currentLayout} frame-${frame}`;
       stripWrapper.style.backgroundColor = '';
       stripWrapper.style.color = '';
 
       const sprockets = stripWrapper.querySelectorAll('.sprocket-track');
-      const isFilmMode = currentLayout === 'film35' || frame === 'film_analog';
-      sprockets.forEach(s => s.classList.toggle('hidden', !isFilmMode));
+      sprockets.forEach(s => s.classList.add('hidden'));
     });
   });
 
   // Custom Color Picker
   const customColorInput = document.getElementById('custom-frame-color');
   customColorInput.addEventListener('input', (e) => {
+    if (currentLayout === 'film35') return;
+
     document.querySelectorAll('.frame-swatch-item').forEach(s => s.classList.remove('active'));
     currentFrameTemplate = 'custom';
+    lastNonFilmFrame = 'custom';
     activeFrameLabel.textContent = `Custom (${e.target.value})`;
 
     stripWrapper.className = `strip-wrapper layout-${currentLayout} frame-custom`;
@@ -1201,12 +1252,19 @@ document.addEventListener('DOMContentLoaded', () => {
         drawImageCover(exportCtx, img, relX, relY, relW, relH);
         exportCtx.restore();
 
-        // Crisp border stroke matching preview
+        // Crisp border stroke matching preview with rounded corners
         exportCtx.save();
-        const isFilmBorder = currentLayout === 'film35' || currentFrameTemplate === 'film_analog';
+        const isFilmBorder = currentLayout === 'film35';
         exportCtx.strokeStyle = isFilmBorder ? 'rgba(255, 255, 255, 0.25)' : '#000000';
-        exportCtx.lineWidth = 1.5 * scale;
-        exportCtx.strokeRect(relX, relY, relW, relH);
+        exportCtx.lineWidth = 1.8 * scale;
+        const borderR = 4 * scale;
+        if (typeof exportCtx.roundRect === 'function') {
+          exportCtx.beginPath();
+          exportCtx.roundRect(relX, relY, relW, relH, borderR);
+          exportCtx.stroke();
+        } else {
+          exportCtx.strokeRect(relX, relY, relW, relH);
+        }
         exportCtx.restore();
       } else {
         exportCtx.fillStyle = 'rgba(0,0,0,0.1)';
@@ -1214,8 +1272,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 5. Draw Sprockets if film35 layout or film_analog template
-    if (currentLayout === 'film35' || currentFrameTemplate === 'film_analog') {
+    // 5. Draw Sprockets strictly for film35 layout
+    if (currentLayout === 'film35') {
       drawFilmSprockets(exportCtx, exportW, exportH, scale);
     }
 
@@ -1290,8 +1348,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawFrameBackgroundOnCanvas(ctx, w, h, scale) {
-    // 35mm Film Roll layout or film_analog frame is always an authentic analog dark film roll
-    if (currentLayout === 'film35' || currentFrameTemplate === 'film_analog') {
+    // 35mm Film Roll layout is always an authentic analog dark film roll
+    if (currentLayout === 'film35') {
       ctx.fillStyle = '#0a0a0c'; // Deep 35mm film base
       ctx.fillRect(0, 0, w, h);
       return;
@@ -1332,10 +1390,12 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       }
       case 'checker_black':
-        drawCheckerPattern(ctx, w, h, 24 * scale, '#1a1a1a', '#ffffff');
+        // Match CSS 16px background-size (8px per square)
+        drawCheckerPattern(ctx, w, h, Math.max(6, Math.round(8 * scale)), '#1a1a1a', '#ffffff');
         break;
       case 'checker_pink':
-        drawCheckerPattern(ctx, w, h, 24 * scale, '#ffccd5', '#ffffff');
+        // Match CSS 16px background-size (8px per square)
+        drawCheckerPattern(ctx, w, h, Math.max(6, Math.round(8 * scale)), '#ffccd5', '#ffffff');
         break;
       case 'film_analog':
         ctx.fillStyle = '#111111';
@@ -1444,7 +1504,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const captionRect = stripCaptionDisplay.getBoundingClientRect();
     const dateRect = stripDateDisplay.getBoundingClientRect();
 
-    const isFilm = currentLayout === 'film35' || currentFrameTemplate === 'film_analog';
+    const isFilm = currentLayout === 'film35';
 
     let textColor = '#111827';
     if (['black', 'film_analog'].includes(currentFrameTemplate)) textColor = '#ffffff';
@@ -1454,6 +1514,58 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentFrameTemplate === 'hearts_pattern') textColor = '#a4133c';
     if (currentFrameTemplate === 'denim_y2k') textColor = '#f1f6f9';
     if (currentFrameTemplate === 'custom') textColor = stripWrapper.style.color || '#111827';
+
+    // Card background for pattern frames (checkerboard, pink grid, hearts, etc.)
+    const needsCardBg = ['checker_black', 'checker_pink', 'hearts_pattern'].includes(currentFrameTemplate);
+    if (needsCardBg) {
+      // 0a. Header Card Background & Border
+      const headCardX = ((headerRect.left - stripRect.left) / stripRect.width) * exportW;
+      const headCardY = ((headerRect.top - stripRect.top) / stripRect.height) * exportH;
+      const headCardW = (headerRect.width / stripRect.width) * exportW;
+      const headCardH = (headerRect.height / stripRect.height) * exportH;
+      const r = 4 * scale;
+
+      ctx.save();
+      ctx.fillStyle = currentFrameTemplate === 'hearts_pattern' ? 'rgba(255, 255, 255, 0.92)' : '#ffffff';
+      drawRoundedRect(ctx, headCardX, headCardY, headCardW, headCardH, r);
+
+      // Card border matching preview
+      ctx.strokeStyle = currentFrameTemplate === 'checker_pink' ? '#c9184a' : '#000000';
+      ctx.lineWidth = 1.5 * scale;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(headCardX, headCardY, headCardW, headCardH, r);
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(headCardX, headCardY, headCardW, headCardH);
+      }
+      ctx.restore();
+
+      // 0b. Footer Card Background & Border
+      const footerElem = stripWrapper.querySelector('.strip-footer');
+      if (footerElem) {
+        const footRect = footerElem.getBoundingClientRect();
+        const footCardX = ((footRect.left - stripRect.left) / stripRect.width) * exportW;
+        const footCardY = ((footRect.top - stripRect.top) / stripRect.height) * exportH;
+        const footCardW = (footRect.width / stripRect.width) * exportW;
+        const footCardH = (footRect.height / stripRect.height) * exportH;
+
+        ctx.save();
+        ctx.fillStyle = currentFrameTemplate === 'hearts_pattern' ? 'rgba(255, 255, 255, 0.92)' : '#ffffff';
+        drawRoundedRect(ctx, footCardX, footCardY, footCardW, footCardH, r);
+
+        ctx.strokeStyle = currentFrameTemplate === 'checker_pink' ? '#c9184a' : '#000000';
+        ctx.lineWidth = 1.5 * scale;
+        if (typeof ctx.roundRect === 'function') {
+          ctx.beginPath();
+          ctx.roundRect(footCardX, footCardY, footCardW, footCardH, r);
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(footCardX, footCardY, footCardW, footCardH);
+        }
+        ctx.restore();
+      }
+    }
 
     ctx.fillStyle = textColor;
     ctx.textAlign = 'center';
