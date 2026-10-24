@@ -16,7 +16,10 @@ import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -27,7 +30,6 @@ import androidx.core.content.ContextCompat;
 import androidx.print.PrintHelper;
 
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.BridgeWebChromeClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,6 +48,24 @@ public class MainActivity extends BridgeActivity {
 
         // 2. Configure WebView settings and add JavaScript Bridge
         setupWebViewBridge();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Auto-activate camera when returning to app if permission is granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            runOnUiThread(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().postDelayed(() -> {
+                        getBridge().getWebView().evaluateJavascript(
+                            "if (window.initCamera && typeof window.hasActiveCameraStream === 'function' && !window.hasActiveCameraStream()) { window.initCamera(true); }",
+                            null
+                        );
+                    }, 300);
+                }
+            });
+        }
     }
 
     private void requestRequiredPermissions() {
@@ -79,12 +99,16 @@ public class MainActivity extends BridgeActivity {
                 settings.setAllowContentAccess(true);
                 settings.setDomStorageEnabled(true);
                 settings.setDatabaseEnabled(true);
+                settings.setJavaScriptEnabled(true);
 
-                // Add Native JavaScript Bridge for direct save to gallery and native print
+                // Add Native JavaScript Bridge for direct save to gallery, native print, and permission request
                 webView.addJavascriptInterface(new NativeAndroidBridge(this), "AndroidBridge");
 
-                // Override WebChromeClient to guarantee WebRTC camera permission grant
-                webView.setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
+                // Get existing Capacitor WebChromeClient for delegation (file chooser, alerts, etc.)
+                final WebChromeClient defaultClient = webView.getWebChromeClient();
+
+                // Custom WebChromeClient: Automatically grant WebRTC camera & audio permissions to WebView
+                webView.setWebChromeClient(new WebChromeClient() {
                     @Override
                     public void onPermissionRequest(final PermissionRequest request) {
                         runOnUiThread(() -> {
@@ -96,6 +120,30 @@ public class MainActivity extends BridgeActivity {
                                 Log.e(TAG, "Failed to grant webview permission", e);
                             }
                         });
+                    }
+
+                    @Override
+                    public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                        if (defaultClient != null) {
+                            return defaultClient.onShowFileChooser(webView, filePathCallback, fileChooserParams);
+                        }
+                        return super.onShowFileChooser(webView, filePathCallback, fileChooserParams);
+                    }
+
+                    @Override
+                    public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                        if (defaultClient != null) {
+                            return defaultClient.onJsAlert(view, url, message, result);
+                        }
+                        return super.onJsAlert(view, url, message, result);
+                    }
+
+                    @Override
+                    public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                        if (defaultClient != null) {
+                            return defaultClient.onJsConfirm(view, url, message, result);
+                        }
+                        return super.onJsConfirm(view, url, message, result);
                     }
                 });
             }
@@ -119,10 +167,12 @@ public class MainActivity extends BridgeActivity {
             if (cameraGranted) {
                 runOnUiThread(() -> {
                     if (getBridge() != null && getBridge().getWebView() != null) {
-                        getBridge().getWebView().evaluateJavascript(
-                            "if (window.initCamera) { window.initCamera(true); }",
-                            null
-                        );
+                        getBridge().getWebView().postDelayed(() -> {
+                            getBridge().getWebView().evaluateJavascript(
+                                "if (window.initCamera) { window.initCamera(true); }",
+                                null
+                            );
+                        }, 250);
                     }
                 });
             }
@@ -137,6 +187,13 @@ public class MainActivity extends BridgeActivity {
 
         public NativeAndroidBridge(Context context) {
             this.context = context;
+        }
+
+        @JavascriptInterface
+        public void requestCameraPermission() {
+            runOnUiThread(() -> {
+                requestRequiredPermissions();
+            });
         }
 
         @JavascriptInterface

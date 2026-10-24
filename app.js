@@ -269,20 +269,28 @@ document.addEventListener('DOMContentLoaded', () => {
       updateCameraStatus('online', 'Aktif (HD)');
       startLiveRenderLoop();
     } else {
-      let desc = 'Izinkan akses webcam di browser Anda atau gunakan tombol di bawah untuk membuka kamera HP atau coba foto sample.';
+      let desc = 'Klik "Akses Kamera" di bawah untuk mengizinkan dan mengaktifkan kamera studio Anda.';
       if (error && error.name === 'NotAllowedError') {
-        desc = 'Akses kamera ditolak oleh browser. Mohon izinkan kamera pada ikon gembok/kamera di samping URL browser.';
+        desc = 'Akses kamera belum diizinkan. Silakan klik "Akses Kamera" di bawah atau izinkan pada notifikasi izin perangkat.';
       } else if (error && error.name === 'NotFoundError') {
         desc = 'Tidak ada perangkat kamera yang terdeteksi pada perangkat ini.';
-      } else if (isMobile) {
-        desc = 'Browser membatasi webcam di jaringan lokal HTTP. Klik "Buka Kamera HP Langsung" untuk memotret!';
       }
-      showOfflineOverlay('Kamera Belum Aktif', desc);
+      showOfflineOverlay('Kamera Standby', desc);
+
+      // Auto retry on startup in case Android runtime dialog was just granted
+      if (!userTriggered) {
+        setTimeout(async () => {
+          if (!activeStream) {
+            await initCamera(true);
+          }
+        }, 1500);
+      }
     }
   }
 
   // Expose to window for Android Native Bridge auto-activation
   window.initCamera = initCamera;
+  window.hasActiveCameraStream = () => !!activeStream;
 
   function showOfflineOverlay(title, desc) {
     if (cameraOfflineOverlay) {
@@ -1544,8 +1552,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnActivateCamera) {
-    btnActivateCamera.addEventListener('click', () => {
-      initCamera(true);
+    btnActivateCamera.addEventListener('click', async () => {
+      if (window.AndroidBridge && typeof window.AndroidBridge.requestCameraPermission === 'function') {
+        window.AndroidBridge.requestCameraPermission();
+      }
+      await initCamera(true);
     });
   }
 
