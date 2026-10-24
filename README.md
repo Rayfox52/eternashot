@@ -3,8 +3,11 @@
 > **Retro 4-Pose Aesthetic Photobooth Studio** built with pure Vanilla JavaScript, CSS3, HTML5 Canvas, and WebRTC. Designed with an authentic **Y2K Neo-Brutalist** aesthetic (digicam viewfinder HUD, high-contrast palette, tactile mechanical controls, and hard-edge drop shadows).
 
 ![EternaShot Preview](https://img.shields.io/badge/STYLE-Y2K%20NEO--BRUTALIST-ccff00?style=for-the-badge&logoColor=000)
+![Author](https://img.shields.io/badge/AUTHOR-Rayfox52-ccff00?style=for-the-badge&logo=github)
 ![License](https://img.shields.io/badge/LICENSE-MIT-ff2a70?style=for-the-badge)
-![Status](https://img.shields.io/badge/STATUS-DEPLOYED-00e5ff?style=for-the-badge)
+![Status](https://img.shields.io/badge/STATUS-LIVE-00e5ff?style=for-the-badge)
+
+🔗 **Live Website**: [https://rayfox52.github.io/eternashot/](https://rayfox52.github.io/eternashot/)
 
 ---
 
