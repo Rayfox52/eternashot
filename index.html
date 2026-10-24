@@ -40,11 +40,13 @@
         <span class="status-dot"></span>
         <span class="status-text">Standby</span>
       </div>
-      <button id="btn-sound-toggle" class="btn-icon" title="Toggle Suara Shutter" aria-label="Toggle Suara">
-        <svg class="ui-icon" id="sound-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        </svg>
+      <button id="btn-sound-toggle" class="btn-icon" title="Suara: AKTIF (Klik untuk Mute)" aria-label="Toggle Suara">
+        <span id="sound-icon-container">
+          <svg class="ui-icon" id="sound-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </span>
       </button>
       <button id="btn-upload-photos" class="btn-secondary" title="Unggah Foto dari Perangkat">
         <svg class="btn-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -436,9 +438,13 @@
 
           <!-- 5. Export Actions -->
           <div class="export-actions-row">
-            <button id="btn-download-strip" class="btn-download-primary" disabled>
+            <button id="btn-download-strip" class="btn-download-primary" disabled title="Simpan Strip Foto ke Galeri / Download">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Cetak / Unduh Strip</span>
+              <span>Simpan ke HP</span>
+            </button>
+            <button id="btn-print-strip" class="btn-download-secondary" disabled title="Cetak Strip Foto (Printer / PDF)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <span>Cetak</span>
             </button>
             <button id="btn-download-bts" class="btn-download-secondary" disabled>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
@@ -446,7 +452,7 @@
             </button>
             <button id="btn-share-qr" class="btn-share" disabled>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2v2h-2z"/><path d="M18 14h2v2h-2z"/><path d="M14 18h2v2h-2z"/><path d="M18 18h2v2h-2z"/></svg>
-              <span>Kirim ke HP</span>
+              <span>Kirim HP</span>
             </button>
           </div>
         </div>

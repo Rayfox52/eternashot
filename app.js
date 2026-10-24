@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const drawerGrid = document.getElementById('drawer-grid');
 
   const btnDownloadStrip = document.getElementById('btn-download-strip');
+  const btnPrintStrip = document.getElementById('btn-print-strip');
   const btnDownloadBts = document.getElementById('btn-download-bts');
   const btnShareQr = document.getElementById('btn-share-qr');
   const modalQr = document.getElementById('modal-qr');
@@ -256,6 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('video.play() failed:', playErr);
       }
 
+      video.onloadedmetadata = () => {
+        if (video.videoWidth && video.videoHeight) {
+          liveCanvas.width = video.videoWidth;
+          liveCanvas.height = video.videoHeight;
+        }
+      };
       liveCanvas.width = video.videoWidth || 1280;
       liveCanvas.height = video.videoHeight || 720;
 
@@ -274,6 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
       showOfflineOverlay('Kamera Belum Aktif', desc);
     }
   }
+
+  // Expose to window for Android Native Bridge auto-activation
+  window.initCamera = initCamera;
 
   function showOfflineOverlay(title, desc) {
     if (cameraOfflineOverlay) {
@@ -401,6 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stripStatusBadge.textContent = 'STRIP READY // EXPORT READY';
     stripStatusBadge.classList.add('complete');
     btnDownloadStrip.disabled = false;
+    if (btnPrintStrip) btnPrintStrip.disabled = false;
     btnShareQr.disabled = false;
 
     // Automatically transition to the Editor Tab on mobile so user sees the finished strip
@@ -524,6 +535,62 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   });
 
+  // Sound Toggle (Mute / Nyala)
+  function updateSoundUI() {
+    if (!btnSoundToggle) return;
+    const container = document.getElementById('sound-icon-container') || btnSoundToggle;
+
+    if (isSoundEnabled) {
+      btnSoundToggle.classList.remove('sound-muted');
+      btnSoundToggle.title = 'Suara: AKTIF (Klik untuk Mute)';
+      btnSoundToggle.setAttribute('aria-label', 'Suara Aktif');
+      container.innerHTML = `
+        <svg class="ui-icon" id="sound-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      `;
+    } else {
+      btnSoundToggle.classList.add('sound-muted');
+      btnSoundToggle.title = 'Suara: MUTE (Klik untuk Bunyikan)';
+      btnSoundToggle.setAttribute('aria-label', 'Suara Mute');
+      container.innerHTML = `
+        <svg class="ui-icon" id="sound-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+      `;
+    }
+  }
+
+  if (btnSoundToggle) {
+    btnSoundToggle.addEventListener('click', () => {
+      isSoundEnabled = !isSoundEnabled;
+      updateSoundUI();
+      if (isSoundEnabled && window.soundEffects) {
+        window.soundEffects.playBeep(880, 0.08);
+      }
+    });
+    updateSoundUI();
+  }
+
+  if (btnMirror) {
+    btnMirror.addEventListener('click', () => {
+      isMirrored = !isMirrored;
+      btnMirror.classList.toggle('active', isMirrored);
+      liveCanvas.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+    });
+  }
+
+  if (btnSwitchCam) {
+    btnSwitchCam.addEventListener('click', async () => {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      btnSwitchCam.title = `Kamera: ${currentFacingMode === 'user' ? 'Depan' : 'Belakang'}`;
+      await initCamera(true);
+    });
+  }
+
   // =========================================================
   // 6. STRIP UI & REBUILD SLOTS
   // =========================================================
@@ -618,9 +685,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const isReady = capturedPhotos.slice(0, maxShots).every(p => p !== null);
     if (isReady) {
       btnDownloadStrip.disabled = false;
+      if (btnPrintStrip) btnPrintStrip.disabled = false;
       btnShareQr.disabled = false;
       stripStatusBadge.textContent = 'Strip Siap! ✨';
       stripStatusBadge.classList.add('complete');
+    } else {
+      btnDownloadStrip.disabled = true;
+      if (btnPrintStrip) btnPrintStrip.disabled = true;
+      btnShareQr.disabled = true;
+      stripStatusBadge.textContent = 'Belum Lengkap';
+      stripStatusBadge.classList.remove('complete');
     }
   }
 
@@ -920,7 +994,97 @@ document.addEventListener('DOMContentLoaded', () => {
     await exportHighResStrip();
   });
 
+  if (btnPrintStrip) {
+    btnPrintStrip.addEventListener('click', async () => {
+      await printHighResStrip();
+    });
+  }
+
   async function exportHighResStrip() {
+    await prepareExportCanvas();
+
+    const filename = `eternashot_${currentLayout}_${dateFormatted.replace(/\./g, '')}_${Date.now()}.png`;
+
+    // 1. Android APK Native Bridge: Direct Save to Gallery!
+    if (window.AndroidBridge && typeof window.AndroidBridge.saveImageToGallery === 'function') {
+      const dataUrl = exportCanvas.toDataURL('image/png', 1.0);
+      window.AndroidBridge.saveImageToGallery(dataUrl, filename);
+      return;
+    }
+
+    // 2. Mobile Browser: Try Native Web Share API if available
+    exportCanvas.toBlob(async blob => {
+      if (!blob) return;
+
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      if (window.innerWidth <= 1024 && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'EternaShot Photo Strip',
+            text: 'EternaShot // Y2K Photo Strip'
+          });
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') return; // User canceled
+          console.warn('Web Share failed, fallback to direct download:', shareErr);
+        }
+      }
+
+      // 3. Desktop / Browser Direct Download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  }
+
+  async function printHighResStrip() {
+    await prepareExportCanvas();
+
+    const dataUrl = exportCanvas.toDataURL('image/png', 1.0);
+
+    // 1. Android APK Native Bridge: Direct System Print Helper!
+    if (window.AndroidBridge && typeof window.AndroidBridge.printImage === 'function') {
+      window.AndroidBridge.printImage(dataUrl);
+      return;
+    }
+
+    // 2. Desktop / Mobile Browser Web Print Fallback
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Cetak Strip - EternaShot</title>
+          <style>
+            @page { size: auto; margin: 0; }
+            body { margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; background: #fff; }
+            img { max-height: 96vh; max-width: 96vw; height: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+            @media print {
+              body { padding: 0; }
+              img { max-height: 100vh; box-shadow: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${dataUrl}" onload="setTimeout(() => { window.print(); window.close(); }, 300);" />
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } else {
+      window.print();
+    }
+  }
+
+  async function prepareExportCanvas() {
     // 1. Measure bounding rect without scale transform to get exact unscaled DOM box
     const originalTransform = stripScalerBox ? stripScalerBox.style.transform : '';
     if (stripScalerBox) stripScalerBox.style.transform = 'none';
@@ -1050,18 +1214,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Restore original transform on preview scaler
     if (stripScalerBox) stripScalerBox.style.transform = originalTransform;
-
-    // 9. Direct Download Trigger
-    exportCanvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `eternashot_${currentLayout}_${dateFormatted.replace(/\./g, '')}_${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 'image/png');
   }
 
   function drawImageCover(ctx, img, x, y, w, h) {
@@ -1393,6 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
           stripStatusBadge.textContent = 'Strip Siap Cetak';
           stripStatusBadge.classList.add('complete');
           btnDownloadStrip.disabled = false;
+          if (btnPrintStrip) btnPrintStrip.disabled = false;
           btnShareQr.disabled = false;
           btnRetakeAll.classList.remove('hidden');
           if (window.innerWidth <= 1024) {
@@ -1428,6 +1581,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stripStatusBadge.textContent = 'Strip Siap Cetak';
         stripStatusBadge.classList.add('complete');
         btnDownloadStrip.disabled = false;
+        if (btnPrintStrip) btnPrintStrip.disabled = false;
         btnShareQr.disabled = false;
         btnRetakeAll.classList.remove('hidden');
         if (window.innerWidth <= 1024) {
